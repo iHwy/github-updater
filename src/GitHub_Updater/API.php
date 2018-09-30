@@ -823,7 +823,7 @@ class API {
 	 */
 	public function set_aws_release_asset_header( $args, $url = '' ) {
 		$args['headers']['accept'] = 'application/octet-stream';
-		unset( $args['headers']['Authorization'] );
+		//unset($args['headers']['Authorization']);
 
 		return $args;
 	}

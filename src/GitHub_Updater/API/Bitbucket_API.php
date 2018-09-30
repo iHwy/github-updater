@@ -50,6 +50,8 @@ class Bitbucket_API extends API implements API_Interface {
 		$this->settings_hook( $this );
 		$this->add_settings_subtab();
 		$this->add_install_fields( $this );
+
+		add_action( 'requests-requests.before_redirect', [ $this, 'handle_amazon_aws_redirect' ], 10, 2 );
 	}
 
 	/**
@@ -164,9 +166,10 @@ class Bitbucket_API extends API implements API_Interface {
 		$endpoint           = '';
 
 		if ( $this->type->release_asset && '0.0.0' !== $this->type->newest_tag ) {
-			add_action( 'requests-requests.before_redirect', [ $this, 'handle_amazon_aws_redirect' ], 10, 2 );
+			//add_action( 'requests-requests.before_redirect', [ $this, 'handle_amazon_aws_redirect' ], 10, 2 );
 			$release_asset_url = $this->make_release_asset_download_link();
-			return $this->get_aws_release_asset_url( $release_asset_url );
+			$response = $this->get_aws_release_asset_url( $release_asset_url );
+			return $release_asset_url;
 		}
 
 		/*
@@ -552,26 +555,12 @@ class Bitbucket_API extends API implements API_Interface {
 		// parse redirect url
 		$arr_url = parse_url( $location );
 
-		//$response = 'bitbucket.org' === $arr_url['host'] ? wp_remote_get($location): false;
-		if ( isset( $response['http_response'] ) && $response['http_response'] instanceof \WP_HTTP_Requests_Response ) {
-			$response_object = $response['http_response']->get_response_object();
-			if ( ! $response_object->success ) {
-				return false;
-			}
-			//$response_headers = $response_object->history[0]->headers;
-			//$download_link    = $response_headers->getValues( 'location' );
-			//$aws_link         = $download_link[0];
-			//$this->set_repo_cache( 'aws_release_asset_url', $aws_link );
-
-			//return $aws_link;
-		}
-
 		// parse query string
 		parse_str( $arr_url['query'], $query );
 
 		// check if 1. the request is for amazon aws, 2. there are authentication information in it and 3. if we're sending http basic auth, which amazon doesn't like.
 		if ( preg_match( '/s3\.amazonaws\.com$/', $arr_url['host'] ) !== 0 // amazon AWS?
-			//&& isset( $query['X-Amz-Signature'] )  // authorization present in redirect URL?
+			&& isset( $query['Signature'] )  // authorization present in redirect URL?
 			&& isset( $req_headers['Authorization'] ) // HTTP Auth present in request headers?
 		) {
 			unset( $req_headers['Authorization'] ); // get rid of it!
